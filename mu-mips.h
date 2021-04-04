@@ -56,6 +56,8 @@ typedef struct CPU_Pipeline_Reg_Struct{
 	uint32_t LMD;
 	uint32_t LO;
 	uint32_t HI;
+	uint32_t RegWrite;
+	bool 
 } CPU_Pipeline_Reg;
 
 /***************************************************************/
