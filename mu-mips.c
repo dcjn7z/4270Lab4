@@ -676,6 +676,13 @@ void ID()
 		immediate = immediate + 0xFFFF0000;
 	}
 	
+	if (EX/MEM.RegWrite and (EX/MEM.RegisterRd != 0) and (EX/MEM.RegisterRd = ID/EX.RegisterRs))
+	
+	if (EX/MEM.RegWrite and (EX/MEM.RegisterRd != 0) and (EX/MEM.RegisterRd = ID/EX.RegisterRt))
+		
+	if (MEM/WB.RegWrite and (MEM/WB.RegisterRd != 0) (MEM/WB.RegisterRd = ID/EX.RegisterRs))
+		
+	if (MEM/WB.RegWrite and (MEM/WB.RegisterRd != 0) (MEM/WB.RegisterRd = ID/EX.RegisterRt))
 	IF_EX.A=CURRENT_STATE.REGS[rs];
 	IF_EX.B=CURRENT_STATE.REGS[rt];
 	IF_EX.IR = instruction;
