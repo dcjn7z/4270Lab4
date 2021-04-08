@@ -698,7 +698,6 @@ void ID()
 {
 	if(IF_EX.Stall!=0)
 	{
-		printf("Stall\n");
 		IF_EX.Stall--;
 		MEM_WB.RegisterRs = 0;
 		MEM_WB.RegisterRt = 0;
@@ -731,16 +730,42 @@ void ID()
 		immediate = immediate + 0xFFFF0000;
 	}
 	
-	if(MEM_WB.RegisterRd != 0 && (MEM_WB.RegisterRd == IF_EX.RegisterRs || MEM_WB.RegisterRd == IF_EX.RegisterRt))
+	if(ENABLE_FORWARDING==0)
 	{
-		IF_EX.Stall = 1;
-		return;
+		if(MEM_WB.RegisterRd != 0 && (MEM_WB.RegisterRd == IF_EX.RegisterRs || MEM_WB.RegisterRd == IF_EX.RegisterRt))
+		{
+			IF_EX.Stall = 1;
+			printf("Stall for 1\n");
+			return;
+		}
+		
+		if (EX_MEM.RegisterRd != 0 && (EX_MEM.RegisterRd == IF_EX.RegisterRs || EX_MEM.RegisterRd == IF_EX.RegisterRt ))
+		{
+			IF_EX.Stall = 2;
+			printf("Stall for 2\n");
+			return;		
+		}
 	}
 	
-	if (EX_MEM.RegisterRd != 0 && (EX_MEM.RegisterRd == IF_EX.RegisterRs || EX_MEM.RegisterRd == IF_EX.RegisterRt ))
+	if(ENABLE_FORWARDING==1)
 	{
-		IF_EX.Stall = 2;
-		return;		
+		
+		if(MEM_WB.RegisterRd != 0 && MEM_WB.RegisterRd == IF_EX.RegisterRs)
+		{
+			IF_EX.A=MEM_WB.A;
+		}
+		if(MEM_WB.RegisterRd != 0 && MEM_WB.RegisterRd == IF_EX.RegisterRt)
+		{
+			IF_EX.B=MEM_WB.B;
+		}
+		if (EX_MEM.RegisterRd != 0 && EX_MEM.RegisterRd == IF_EX.RegisterRs)
+		{
+			IF_EX.A = EX_MEM.A;	
+		}
+		if (EX_MEM.RegisterRd != 0 && EX_MEM.RegisterRd == IF_EX.RegisterRt)
+		{
+			IF_EX.B = EX_MEM.B;	
+		}
 	}
 	
 	IF_EX.A=CURRENT_STATE.REGS[rs];
