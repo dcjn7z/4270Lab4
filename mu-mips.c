@@ -449,6 +449,15 @@ void WB()
 			case 0x0D: //ORI
 				NEXT_STATE.REGS[rt] = output;
 				break;
+			case 0x28: //SB
+				NEXT_STATE.REGS[rt] = output;
+				break;
+			case 0x29: //SH
+			NEXT_STATE.REGS[rt] = output;
+				break;
+			case 0x2B: //SW
+				NEXT_STATE.REGS[rt] = output;
+				break;
 		}
 		
 	}
@@ -699,9 +708,20 @@ if(opcode == 0x00){
 void ID()
 {
 	//show_pipeline();
+	uint32_t instruction, rs, rt, immediate,opcode,function;
+	instruction = ID_IF.IR;
+	opcode = (instruction & 0xFC000000) >> 26;
+	function = instruction & 0x0000003F;
+	rs = (instruction & 0x03E00000) >> 21;
+	rt = (instruction & 0x001F0000) >> 16;
+	immediate = instruction & 0x0000FFFF;
+	IF_EX.A=CURRENT_STATE.REGS[rs];
+	IF_EX.B=CURRENT_STATE.REGS[rt];
+	IF_EX.IR = instruction;
+	IF_EX.imm = immediate;
+	
 	if(IF_EX.Stall!=0)
 	{
-		IF_EX.Stall--;
 		MEM_WB.RegisterRs = 0;
 		MEM_WB.RegisterRt = 0;
 		MEM_WB.RegisterRd = 0;
@@ -715,15 +735,10 @@ void ID()
 		return;
 	}
 	
-	uint32_t instruction, rs, rt, immediate,opcode,function;
+	
 	if (CURRENT_STATE.PC < 4194308){
 		return;}
-	instruction = ID_IF.IR;
-	opcode = (instruction & 0xFC000000) >> 26;
-	function = instruction & 0x0000003F;
-	rs = (instruction & 0x03E00000) >> 21;
-	rt = (instruction & 0x001F0000) >> 16;
-	immediate = instruction & 0x0000FFFF;
+	
 	
 	
 	if ((immediate & 0x00008000)>>15 == 0x1)
@@ -731,10 +746,7 @@ void ID()
 		immediate = immediate + 0xFFFF0000;
 	}
 	
-	IF_EX.A=CURRENT_STATE.REGS[rs];
-	IF_EX.B=CURRENT_STATE.REGS[rt];
-	IF_EX.IR = instruction;
-	IF_EX.imm = immediate;
+	
 	
 	IF_EX.RegisterRs = (instruction & 0x03E00000) >> 21;
 	IF_EX.RegisterRt = (instruction & 0x001F0000) >> 16;
@@ -768,12 +780,13 @@ void ID()
 			case 0x25: //OR
 			case 0x26: //XOR
 			case 0x27: //NOR
-				if((MEM_WB.RegisterRd==IF_EX.RegisterRs || MEM_WB.RegisterRd==IF_EX.RegisterRt) && CURRENT_STATE.PC >= 4194316)
+
+				if((MEM_WB.RegisterRd==IF_EX.RegisterRs || MEM_WB.RegisterRd==IF_EX.RegisterRt|| MEM_WB.RegisterRt==IF_EX.RegisterRs) && CURRENT_STATE.PC >= 4194316)
 				{
 					IF_EX.Stall = 3;
 					printf("Stall for 1 - MEMWB RD = %x, IDEX RS = %x, IDEX RT = %x\n", MEM_WB.RegisterRd, IF_EX.RegisterRs, IF_EX.RegisterRt);
 				}
-				if((EX_MEM.RegisterRd==IF_EX.RegisterRs || EX_MEM.RegisterRd==IF_EX.RegisterRt) && CURRENT_STATE.PC >= 4194312)
+				if((EX_MEM.RegisterRd==IF_EX.RegisterRs || EX_MEM.RegisterRd==IF_EX.RegisterRt|| EX_MEM.RegisterRt==IF_EX.RegisterRs) && CURRENT_STATE.PC >= 4194312)
 				{
 					IF_EX.Stall = 4;
 					printf("Stall for 2 - EXMEM RD = %x, IDEX RS = %x, IDEX RT = %x\n", EX_MEM.RegisterRd, IF_EX.RegisterRs, IF_EX.RegisterRt);
@@ -788,22 +801,36 @@ void ID()
 			
 			case 0x08: //ADDI
 			case 0x09: //ADDIU
+				if((MEM_WB.RegisterRt==IF_EX.RegisterRs || MEM_WB.RegisterRd==IF_EX.RegisterRt)&& CURRENT_STATE.PC >= 4194316)
+				{
+					IF_EX.Stall = 3;
+					printf("Stall for 1 - MEMWB RD = %x, IDEX RS = %x, IDEX RT = %x\n", MEM_WB.RegisterRd, IF_EX.RegisterRs, IF_EX.RegisterRt);
+				}
+				if((EX_MEM.RegisterRt==IF_EX.RegisterRs || EX_MEM.RegisterRd==IF_EX.RegisterRt)&& CURRENT_STATE.PC >= 4194312)
+				{
+					IF_EX.Stall = 4;
+					printf("Stall for 2 - EXMEM RD = %x, IDEX RS = %x, IDEX RT = %x\n", EX_MEM.RegisterRd, IF_EX.RegisterRs, IF_EX.RegisterRt);
+				}
+				break;
 			case 0x0A: //SLTI
 			case 0x0F: //LUI
 			case 0x20: //LB
 			case 0x21: //LH
 			case 0x23: //LW
+			case 0x28: //SB
+			case 0x29: //SH
+			case 0x2B: //SW
 			case 0x0E: //XORI
 			case 0x0C: //ANDI
 			case 0x0D: //ORI
-				if((MEM_WB.RegisterRt==IF_EX.RegisterRs || MEM_WB.RegisterRt==IF_EX.RegisterRt)&& CURRENT_STATE.PC >= 4194316)
+				if((MEM_WB.RegisterRt==IF_EX.RegisterRs || MEM_WB.RegisterRt==IF_EX.RegisterRt || MEM_WB.RegisterRd==IF_EX.RegisterRt)&& CURRENT_STATE.PC >= 4194316)
 				{
-					IF_EX.Stall = 3;
+					IF_EX.Stall = 2;
 					printf("Stall for 1 - MEMWB RD = %x, IDEX RS = %x, IDEX RT = %x\n", MEM_WB.RegisterRd, IF_EX.RegisterRs, IF_EX.RegisterRt);
 				}
-				if((EX_MEM.RegisterRt==IF_EX.RegisterRs || EX_MEM.RegisterRt==IF_EX.RegisterRt)&& CURRENT_STATE.PC >= 4194312)
+				if((EX_MEM.RegisterRt==IF_EX.RegisterRs || EX_MEM.RegisterRt==IF_EX.RegisterRt || EX_MEM.RegisterRd==IF_EX.RegisterRt)&& CURRENT_STATE.PC >= 4194312)
 				{
-					IF_EX.Stall = 4;
+					IF_EX.Stall = 3;
 					printf("Stall for 2 - EXMEM RD = %x, IDEX RS = %x, IDEX RT = %x\n", EX_MEM.RegisterRd, IF_EX.RegisterRs, IF_EX.RegisterRt);
 				}
 				break;
@@ -841,26 +868,24 @@ void ID()
 /************************************************************/
 void IF()
 {	
-	if (IF_EX.Stall == 1 || IF_EX.Stall == 2 )
+	
+	
+	ID_IF.IR = mem_read_32(CURRENT_STATE.PC);
+	if(IF_EX.Stall!=0)
 	{
-		return;
-	}
-	if (IF_EX.Stall == 4)
-	{
-		IF_EX.Stall=2;
-	}
-	if (IF_EX.Stall == 3)
-	{
-		IF_EX.Stall=1;
+		IF_EX.Stall--;
+		printf("Stall Counter = %d\n", IF_EX.Stall);
 	}
 	
 	if (ID_IF.IR ==	0xc){
-		show_pipeline();
 		return;}
-	ID_IF.IR = mem_read_32(CURRENT_STATE.PC);
-	NEXT_STATE.PC = CURRENT_STATE.PC + 4;
-	ID_IF.PC = NEXT_STATE.PC;
-	INSTRUCTION_COUNT++;
+	
+	if (IF_EX.Stall==0)
+	{
+		NEXT_STATE.PC = CURRENT_STATE.PC + 4;
+		ID_IF.PC = NEXT_STATE.PC;
+		INSTRUCTION_COUNT++;
+	}
 	//show_pipeline();
 }
 
