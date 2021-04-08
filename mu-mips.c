@@ -23,6 +23,7 @@ void help() {
 	printf("print\t-- print the program loaded into memory\n");
 	printf("show\t-- print the current content of the pipeline registers\n");
 	printf("?\t-- display help menu\n");
+	printf("forwarding\t-- 1 for on, 0 for off\n");
 	printf("quit\t-- exit the simulator\n\n");
 	printf("------------------------------------------------------------------\n\n");
 }
@@ -231,6 +232,14 @@ void handle_command() {
 		case 'P':
 		case 'p':
 			print_program(); 
+			break;
+		case 'F':
+		case 'f':
+			if (scanf("%d", &ENABLE_FORWARDING) != 1) 
+			{
+				break;
+			}
+			ENABLE_FORWARDING == 0 ? printf("Forwarding OFF\n") : printf("Forwarding ON\n");
 			break;
 		default:
 			printf("Invalid Command.\n");
@@ -441,6 +450,7 @@ void WB()
 		}
 		
 	}
+
 	//show_pipeline();
 }
 
@@ -458,6 +468,18 @@ void MEM()
 	b = EX_MEM.B;
 	alu = EX_MEM.ALUOutput;
 	output=0;
+	
+	if (IF_EX.Stall==1)
+	{
+		return;
+	}
+	
+	if(IF_EX.Stall==0)
+	{
+		MEM_WB.RegisterRs = (instruction & 0x03E00000) >> 21;
+		MEM_WB.RegisterRt = (instruction & 0x001F0000) >> 16;
+		MEM_WB.RegisterRd = (instruction & 0x0000F800) >> 11;
+	}
 	
 	switch(opcode){
 			case 0x20: //LB
@@ -493,6 +515,7 @@ void EX()
 {
 	if (CURRENT_STATE.PC < 4194312){
 		return;}
+	
 
 	uint32_t instruction, a, b, immediate, opcode, function, output, sa;
 	instruction = IF_EX.IR;
@@ -504,6 +527,17 @@ void EX()
 	output = 0;
 	sa = (instruction & 0x000007C0) >> 6;
 	uint64_t product, p1, p2;
+	if (IF_EX.Stall==2 || IF_EX.Stall==1)
+	{
+		return;
+	}
+	
+	if (IF_EX.Stall==0)
+	{
+		EX_MEM.RegisterRs = (instruction & 0x03E00000) >> 21;
+		EX_MEM.RegisterRt = (instruction & 0x001F0000) >> 16;
+		EX_MEM.RegisterRd = (instruction & 0x0000F800) >> 11;
+	}
 	
 if(opcode == 0x00){
 		switch(function){
@@ -651,6 +685,7 @@ if(opcode == 0x00){
 	}
 	//passing through the pipelined, storing all values in the temporary registers
 	EX_MEM.IR = instruction;
+	EX_MEM.A = a;
 	EX_MEM.B = b;
 	EX_MEM.ALUOutput = output;
 	//show_pipeline();
@@ -661,6 +696,23 @@ if(opcode == 0x00){
 /************************************************************/
 void ID()
 {
+	if(IF_EX.Stall!=0)
+	{
+		printf("Stall\n");
+		IF_EX.Stall--;
+		MEM_WB.RegisterRs = 0;
+		MEM_WB.RegisterRt = 0;
+		MEM_WB.RegisterRd = 0;
+		EX_MEM.RegisterRs = 0;
+		EX_MEM.RegisterRt = 0;
+		EX_MEM.RegisterRd = 0;
+	}
+	
+	if (IF_EX.Stall!=0)
+	{
+		return;
+	}
+	
 	uint32_t instruction, rs, rt, immediate;
 	if (CURRENT_STATE.PC < 4194308){
 		return;}
@@ -670,19 +722,26 @@ void ID()
 	rt = (instruction & 0x001F0000) >> 16;
 	immediate = instruction & 0x0000FFFF;
 	
+	IF_EX.RegisterRs = (instruction & 0x03E00000) >> 21;
+	IF_EX.RegisterRt = (instruction & 0x001F0000) >> 16;
+	IF_EX.RegisterRd = (instruction & 0x0000F800) >> 11;
 	
 	if ((immediate & 0x00008000)>>15 == 0x1)
 	{
 		immediate = immediate + 0xFFFF0000;
 	}
 	
-	if (EX/MEM.RegWrite and (EX/MEM.RegisterRd != 0) and (EX/MEM.RegisterRd = ID/EX.RegisterRs))
+	if(MEM_WB.RegisterRd != 0 && (MEM_WB.RegisterRd == IF_EX.RegisterRs || MEM_WB.RegisterRd == IF_EX.RegisterRt))
+	{
+		IF_EX.Stall = 1;
+		return;
+	}
 	
-	if (EX/MEM.RegWrite and (EX/MEM.RegisterRd != 0) and (EX/MEM.RegisterRd = ID/EX.RegisterRt))
-		
-	if (MEM/WB.RegWrite and (MEM/WB.RegisterRd != 0) (MEM/WB.RegisterRd = ID/EX.RegisterRs))
-		
-	if (MEM/WB.RegWrite and (MEM/WB.RegisterRd != 0) (MEM/WB.RegisterRd = ID/EX.RegisterRt))
+	if (EX_MEM.RegisterRd != 0 && (EX_MEM.RegisterRd == IF_EX.RegisterRs || EX_MEM.RegisterRd == IF_EX.RegisterRt ))
+	{
+		IF_EX.Stall = 2;
+		return;		
+	}
 	
 	IF_EX.A=CURRENT_STATE.REGS[rs];
 	IF_EX.B=CURRENT_STATE.REGS[rt];
@@ -696,6 +755,10 @@ void ID()
 /************************************************************/
 void IF()
 {
+	if (IF_EX.Stall != 0)
+	{
+		return;
+	}
 	if (ID_IF.IR ==	0xc){
 		show_pipeline();
 		return;}
