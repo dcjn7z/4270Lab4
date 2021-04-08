@@ -328,6 +328,7 @@ void handle_pipeline()
 	EX();
 	ID();
 	IF();
+	show_pipeline();
 }
 
 /************************************************************/
@@ -696,6 +697,7 @@ if(opcode == 0x00){
 /************************************************************/
 void ID()
 {
+	//show_pipeline();
 	if(IF_EX.Stall!=0)
 	{
 		IF_EX.Stall--;
@@ -730,19 +732,28 @@ void ID()
 		immediate = immediate + 0xFFFF0000;
 	}
 	
+	IF_EX.A=CURRENT_STATE.REGS[rs];
+	IF_EX.B=CURRENT_STATE.REGS[rt];
+	IF_EX.IR = instruction;
+	IF_EX.imm = immediate;
+	
 	if(ENABLE_FORWARDING==0)
 	{
-		if(MEM_WB.RegisterRd != 0 && (MEM_WB.RegisterRd == IF_EX.RegisterRs || MEM_WB.RegisterRd == IF_EX.RegisterRt))
+		if(((MEM_WB.RegisterRd != 0 || MEM_WB.RegisterRt !=0 || MEM_WB.RegisterRs !=0) && (IF_EX.RegisterRd !=0 || IF_EX.RegisterRs!=0 ||
+				IF_EX.RegisterRt!=0)) && (MEM_WB.RegisterRd == IF_EX.RegisterRs || MEM_WB.RegisterRd == IF_EX.RegisterRt))
 		{
 			IF_EX.Stall = 1;
-			printf("Stall for 1\n");
+			
+			printf("Stall for 1 - MEMWB RD = %x, IDEX RS = %x, IDEX RT = %x\n", MEM_WB.RegisterRd, IF_EX.RegisterRs, IF_EX.RegisterRt);
 			return;
 		}
 		
-		if (EX_MEM.RegisterRd != 0 && (EX_MEM.RegisterRd == IF_EX.RegisterRs || EX_MEM.RegisterRd == IF_EX.RegisterRt ))
+		if (((EX_MEM.RegisterRd != 0 || EX_MEM.RegisterRt !=0 || EX_MEM.RegisterRs !=0) && (IF_EX.RegisterRd !=0 || IF_EX.RegisterRs!=0 ||
+				IF_EX.RegisterRt!=0)) && (EX_MEM.RegisterRd == IF_EX.RegisterRs || EX_MEM.RegisterRd == IF_EX.RegisterRt ||EX_MEM.RegisterRt == 
+				IF_EX.RegisterRs || IF_EX.RegisterRt == EX_MEM.RegisterRt ))
 		{
 			IF_EX.Stall = 2;
-			printf("Stall for 2\n");
+			printf("Stall for 2 - EXMEM RD = %x, IDEX RS = %x, IDEX RT = %x\n", EX_MEM.RegisterRd, IF_EX.RegisterRs, IF_EX.RegisterRt);
 			return;		
 		}
 	}
@@ -768,10 +779,6 @@ void ID()
 		}
 	}
 	
-	IF_EX.A=CURRENT_STATE.REGS[rs];
-	IF_EX.B=CURRENT_STATE.REGS[rt];
-	IF_EX.IR = instruction;
-	IF_EX.imm = immediate;
 	//show_pipeline();
 }
 
@@ -791,7 +798,7 @@ void IF()
 	NEXT_STATE.PC = CURRENT_STATE.PC + 4;
 	ID_IF.PC = NEXT_STATE.PC;
 	INSTRUCTION_COUNT++;
-	show_pipeline();
+	//show_pipeline();
 }
 
 
@@ -1353,6 +1360,9 @@ void show_pipeline(){
 	printf("MEM/WB.IR\t\t0x%x\n",MEM_WB.IR);
 	printf("MEM/WB.ALUOutput\t0x%x\n",MEM_WB.ALUOutput);
 	printf("MEM/WB.LMD\t\t0x%x\n",MEM_WB.LMD);
+	printf("IDEX RD = %x, IDEX RS = %x, IDEX RT = %x\n", IF_EX.RegisterRd, IF_EX.RegisterRs, IF_EX.RegisterRt);
+	printf("EXMEM RD = %x, EXMEM RS = %x, EXMEM RT = %x\n", EX_MEM.RegisterRd, EX_MEM.RegisterRs, EX_MEM.RegisterRt);
+	printf("MEMWB RD = %x, MEMWB RS = %x, MEMWB RT = %x\n", MEM_WB.RegisterRd, MEM_WB.RegisterRs, MEM_WB.RegisterRt);
 	printf("\n");
 }
 
