@@ -46,20 +46,18 @@ typedef struct CPU_State_Struct {
 } CPU_State;
 
 typedef struct CPU_Pipeline_Reg_Struct{
-	uint32_t PC;
+	uint32_t PC;	
 	uint32_t IR;
 	uint32_t A;
 	uint32_t B;
+	uint32_t HI;
+	uint32_t LO;
+	uint32_t SYS;
 	uint32_t imm;
 	uint32_t ALUOutput;
 	uint32_t ALUOutput2;
 	uint32_t LMD;
-	uint32_t LO;
-	uint32_t HI;
-	uint32_t Stall;
-	uint32_t RegisterRs;
-	uint32_t RegisterRt;
-	uint32_t RegisterRd;
+	
 } CPU_Pipeline_Reg;
 
 /***************************************************************/
@@ -68,20 +66,24 @@ typedef struct CPU_Pipeline_Reg_Struct{
 
 CPU_State CURRENT_STATE, NEXT_STATE;
 int RUN_FLAG;	/* run flag*/
+int ENABLE_FORWARDING;						//Forwarding Flag
+int ForwardA;
+int ForwardB;
 uint32_t INSTRUCTION_COUNT;
 uint32_t CYCLE_COUNT;
 uint32_t PROGRAM_SIZE; /*in words*/
-uint32_t ENABLE_FORWARDING;
+
 
 /***************************************************************/
 /* Pipeline Registers.                                                                                                        */
 /***************************************************************/
 CPU_Pipeline_Reg ID_IF;
-CPU_Pipeline_Reg IF_EX;
-CPU_Pipeline_Reg EX_MEM;
-CPU_Pipeline_Reg MEM_WB;
+CPU_Pipeline_Reg EX_ID;
+CPU_Pipeline_Reg MEM_EX;
+CPU_Pipeline_Reg WB_MEM;
 
 char prog_file[32];
+
 
 /***************************************************************/
 /* Function Declerations.                                                                                                */
@@ -107,3 +109,4 @@ void IF();/*IMPLEMENT THIS*/
 void show_pipeline();/*IMPLEMENT THIS*/
 void initialize();
 void print_program(); /*IMPLEMENT THIS*/
+void print_instruction(uint32_t addr);
